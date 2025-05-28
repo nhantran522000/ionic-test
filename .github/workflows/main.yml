@@ -82,7 +82,7 @@ jobs:
           cd android
           chmod +x ./gradlew
           ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=app/release.keystore \
+            -Pandroid.injected.signing.store.file=$PWD/app/release.keystore \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
@@ -138,29 +138,6 @@ jobs:
           cd ios/App
           pod install
 
-      - name: Setup iOS Signing
-        run: |
-          # Create keychain
-          security create-keychain -p "temp123" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "temp123" build.keychain
-          security set-keychain-settings -t 3600 -u build.keychain
-
-          # Import certificate
-          echo "${{ secrets.IOS_CERTIFICATE_BASE64 }}" | base64 --decode > certificate.p12
-          security import certificate.p12 -k build.keychain -P "${{ secrets.IOS_CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "temp123" build.keychain
-
-          # Install provisioning profile
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
-
-      - name: Update iOS project settings
-        run: |
-          cd ios/App
-          # Update team ID in project
-          sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = "${{ secrets.IOS_TEAM_ID }}";/g' App.xcodeproj/project.pbxproj
-
       - name: Build iOS app
         run: |
           cd ios
@@ -168,7 +145,8 @@ jobs:
             -scheme App \
             -configuration Release \
             -destination generic/platform=iOS \
-            -allowProvisioningUpdates \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
             build
 
       - name: Create iOS Archive
@@ -178,19 +156,12 @@ jobs:
             -scheme App \
             -configuration Release \
             -destination generic/platform=iOS \
-            -allowProvisioningUpdates \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
             archive -archivePath App.xcarchive
-
-      - name: Export IPA
-        run: |
-          cd ios
-          xcodebuild -exportArchive \
-            -archivePath App.xcarchive \
-            -exportPath ./output \
-            -exportOptionsPlist ../ExportOptions.plist
 
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-ipa
-          path: ios/output/*.ipa
+          name: ios-archive
+          path: ios/App.xcarchive
