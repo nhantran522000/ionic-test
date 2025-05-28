@@ -1,1 +1,55 @@
+name: Mobile Deploy
 
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-android:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+
+      - name: Build Android app
+        run: |
+          npm exec npx cap sync android
+          cd android
+          ./gradlew assembleRelease
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+  deploy-ios:
+    runs-on: macos-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+
+      - name: Build iOS app
+        run: |
+          npm exec npx cap sync ios
+          cd ios
+          xcodebuild -workspace YourApp.xcworkspace -scheme YourApp -configuration Release archive -archivePath YourApp.xcarchive
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-archive
+          path: ios/build/YourApp.xcarchive
