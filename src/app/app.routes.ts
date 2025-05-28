@@ -3,16 +3,13 @@ import { AppComponent } from './app.component';
 
 export const routes: Routes = [
   {
-    path: 'home',
-    component: AppComponent,
-  },
-  {
     path: '',
     redirectTo: 'home',
     pathMatch: 'full',
   },
+
   {
-    path: 'test',
-    loadComponent: () => import('./test/test.page').then( m => m.TestPage)
+    path: 'home',
+    loadComponent: () => import('./home/home.page').then((m) => m.HomePage),
   },
 ];
